@@ -3,6 +3,10 @@ import "./style.css";
 const APPLICATION_TITLE = "Hi";
 const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
+type Point = { x: number, y: number };
+let strokes: Point[][] = []; // Store all strokes; each stroke is an array of points
+let currentStroke: Point[] = [];
+
 function initializeApp() {
     // Create and append the application title
     const headerTitle = document.createElement("h1");
@@ -23,6 +27,7 @@ function initializeApp() {
     // Add event listeners
     clearButton.addEventListener('click', () => clearCanvas(canvas));
     setupDrawingOnCanvas(canvas);
+    canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
 }
 
 function createCanvas(): HTMLCanvasElement {
@@ -35,44 +40,77 @@ function createCanvas(): HTMLCanvasElement {
 }
 
 function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
     let drawing = false;
 
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
-        draw(event);
+        currentStroke = [];
+        addPoint(event, canvas);
     };
 
     const endDrawing = () => {
-        drawing = false;
-        context.beginPath(); // Prepare for a new path
+        if (drawing) {
+            drawing = false;
+            if (currentStroke.length > 0) {
+                strokes.push(currentStroke);
+                dispatchDrawingChangedEvent(canvas);
+            }
+        }
     };
 
-    const draw = (event: MouseEvent) => {
+    const addPoint = (event: MouseEvent, canvas: HTMLCanvasElement) => {
         if (!drawing) return;
-
-        context.lineWidth = 2;
-        context.lineCap = 'round';
-        context.strokeStyle = 'white';
-
-        context.lineTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
-        context.stroke();
-        context.beginPath(); // Ensure continuity in strokes
-        context.moveTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+        const point: Point = {
+            x: event.clientX - canvas.offsetLeft,
+            y: event.clientY - canvas.offsetTop
+        };
+        currentStroke.push(point);
+        dispatchDrawingChangedEvent(canvas);
     };
 
+    // Attach mouse events
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mouseup', endDrawing);
-    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mousemove', (event) => addPoint(event, canvas));
 }
 
-function clearCanvas(canvas: HTMLCanvasElement) {
+// Dispatch a custom "drawing-changed" event
+function dispatchDrawingChangedEvent(canvas: HTMLCanvasElement) {
+    const event = new CustomEvent('drawing-changed');
+    canvas.dispatchEvent(event);
+}
+
+// Clear and redraw the canvas based on current strokes
+function redrawCanvas(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
-    if (context) {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!context) return;
+
+    // Clear the canvas
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    context.lineWidth = 2;
+    context.lineCap = 'round';
+    context.strokeStyle = 'white'; // The draw color is white
+
+    for (const stroke of strokes) {
+        context.beginPath();
+        for (let i = 0; i < stroke.length; i++) {
+            const point = stroke[i];
+            if (i === 0) {
+                context.moveTo(point.x, point.y);
+            } else {
+                context.lineTo(point.x, point.y);
+            }
+        }
+        context.stroke();
     }
+}
+
+// Clear the canvas and reset strokes
+function clearCanvas(canvas: HTMLCanvasElement) {
+    strokes = [];
+    currentStroke = [];
+    redrawCanvas(canvas);
 }
 
 // Initialize the application when the document is fully loaded
