@@ -4,7 +4,8 @@ const APPLICATION_TITLE = "Hi";
 const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
 type Point = { x: number, y: number };
-let strokes: Point[][] = []; // Store all strokes; each stroke is an array of points
+let strokes: Point[][] = []; // Display list for current strokes
+let redoStack: Point[][] = []; // Stack for redo operations
 let currentStroke: Point[] = [];
 
 function initializeApp() {
@@ -16,18 +17,29 @@ function initializeApp() {
     // Create and append the canvas
     const canvas = createCanvas();
 
-    // Create and append a clear button
-    const clearButton = document.createElement('button');
-    clearButton.textContent = "Clear Canvas";
-    rootElement.appendChild(clearButton);
+    // Create and append control buttons
+    const clearButton = createButton("Clear Canvas", () => clearCanvas(canvas));
+    const undoButton = createButton("Undo", () => undoLastStroke(canvas));
+    const redoButton = createButton("Redo", () => redoLastStroke(canvas));
 
     // Set the browser tab title
     document.title = APPLICATION_TITLE;
 
     // Add event listeners
-    clearButton.addEventListener('click', () => clearCanvas(canvas));
     setupDrawingOnCanvas(canvas);
     canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
+
+    // Append buttons to the DOM
+    rootElement.appendChild(clearButton);
+    rootElement.appendChild(undoButton);
+    rootElement.appendChild(redoButton);
+}
+
+function createButton(label: string, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    return button;
 }
 
 function createCanvas(): HTMLCanvasElement {
@@ -50,11 +62,12 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
 
     const endDrawing = () => {
         if (drawing) {
-            drawing = false;
             if (currentStroke.length > 0) {
                 strokes.push(currentStroke);
+                redoStack = []; // Clear redo stack whenever a new stroke is finished
                 dispatchDrawingChangedEvent(canvas);
             }
+            drawing = false;
         }
     };
 
@@ -90,7 +103,7 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
 
     context.lineWidth = 2;
     context.lineCap = 'round';
-    context.strokeStyle = 'white'; // The draw color is white
+    context.strokeStyle = 'white';
 
     for (const stroke of strokes) {
         context.beginPath();
@@ -106,11 +119,27 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
     }
 }
 
-// Clear the canvas and reset strokes
 function clearCanvas(canvas: HTMLCanvasElement) {
     strokes = [];
+    redoStack = [];
     currentStroke = [];
     redrawCanvas(canvas);
+}
+
+function undoLastStroke(canvas: HTMLCanvasElement) {
+    if (strokes.length > 0) {
+        const stroke = strokes.pop()!;
+        redoStack.push(stroke);
+        dispatchDrawingChangedEvent(canvas);
+    }
+}
+
+function redoLastStroke(canvas: HTMLCanvasElement) {
+    if (redoStack.length > 0) {
+        const stroke = redoStack.pop()!;
+        strokes.push(stroke);
+        dispatchDrawingChangedEvent(canvas);
+    }
 }
 
 // Initialize the application when the document is fully loaded
