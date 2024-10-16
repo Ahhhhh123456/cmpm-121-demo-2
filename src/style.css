@@ -40,6 +40,8 @@ h1 {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  
+
 }
 
 .logo {
@@ -79,6 +81,12 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+#myCanvas {
+  border: 1px solid black;
+  border-radius: 8px;  /* Rounded corners */
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);  /* Drop shadow */
 }
 
 @media (prefers-color-scheme: light) {
