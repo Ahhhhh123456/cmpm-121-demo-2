@@ -83,6 +83,12 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.selectedTool {
+  background-color: #aeb0a6bf; /* Change according to your theme */
+  color: white;
+  border-color: #888;
+}
+
 #myCanvas {
   border: 1px solid black;
   border-radius: 8px;  /* Rounded corners */

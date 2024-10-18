@@ -3,10 +3,14 @@ import "./style.css";
 const APPLICATION_TITLE = "Hi";
 const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
+let lineThickness: number = 3;
+
 class Stroke {
     points: Point[];
+    thickness: number;
 
-    constructor(points: Point[] = []) {
+    constructor(thickness: number, points: Point[] = []) {
+        this.thickness = thickness;
         this.points = points;
     }
 
@@ -17,7 +21,7 @@ class Stroke {
     display(ctx: CanvasRenderingContext2D) {
         if (this.points.length === 0) return;
 
-        ctx.lineWidth = 2;
+        ctx.lineWidth = this.thickness; // Use the stroke's specific thickness
         ctx.lineCap = 'round';
         ctx.strokeStyle = 'white'; // The draw color is white
 
@@ -37,7 +41,7 @@ class Stroke {
 type Point = { x: number, y: number };
 let strokes: Stroke[] = []; // Display list for current strokes
 let redoStack: Stroke[] = []; // Stack for redo operations
-let currentStroke: Stroke = new Stroke();
+let currentStroke: Stroke = new Stroke(lineThickness);
 
 function initializeApp() {
     // Create and append the application title
@@ -45,31 +49,56 @@ function initializeApp() {
     headerTitle.textContent = APPLICATION_TITLE;
     rootElement.appendChild(headerTitle);
 
+    // Create a container for the canvas and controls
+    const container = document.createElement('div');
+    container.classList.add('canvas-container');
+    rootElement.appendChild(container);
+
     // Create and append the canvas
     const canvas = createCanvas();
+    container.appendChild(canvas);
 
-    // Create and append control buttons
+    // Create control buttons
     const clearButton = createButton("Clear Canvas", () => clearCanvas(canvas));
     const undoButton = createButton("Undo", () => undoLastStroke(canvas));
     const redoButton = createButton("Redo", () => redoLastStroke(canvas));
+    const thinButton = createButton("Thin", () => setlineThickness(1));
+    const medButton = createButton("Medium", () => setlineThickness(3)); // Default Thickness   
+    const thickButton = createButton("Thick", () => setlineThickness(5)); 
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('button-container');
+    buttonContainer.appendChild(clearButton);
+    buttonContainer.appendChild(undoButton);
+    buttonContainer.appendChild(redoButton);
+    buttonContainer.appendChild(thinButton);
+    buttonContainer.appendChild(medButton);
+    buttonContainer.appendChild(thickButton);
+
+    container.appendChild(buttonContainer); // Append the button container
 
     // Set the browser tab title
     document.title = APPLICATION_TITLE;
 
-    // Add event listeners
+    // Add event listeners for canvas
     setupDrawingOnCanvas(canvas);
     canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
-
-    // Append buttons to the DOM
-    rootElement.appendChild(clearButton);
-    rootElement.appendChild(undoButton);
-    rootElement.appendChild(redoButton);
 }
+
+let currentTool: HTMLButtonElement | null = null;
 
 function createButton(label: string, onClick: () => void): HTMLButtonElement {
     const button = document.createElement('button');
     button.textContent = label;
-    button.addEventListener('click', onClick);
+    button.addEventListener('click', () => {
+      // Update the current tool and styling
+      if (currentTool) {
+          currentTool.classList.remove('selectedTool');
+      }
+      currentTool = button;
+      button.classList.add('selectedTool');
+      onClick();
+    });
     return button;
 }
 
@@ -87,7 +116,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
 
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
-        currentStroke = new Stroke();
+        currentStroke = new Stroke(lineThickness); // Initialize current stroke with the current global thickness
         addPoint(event, canvas);
     };
 
@@ -141,7 +170,7 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
 function clearCanvas(canvas: HTMLCanvasElement) {
     strokes = [];
     redoStack = [];
-    currentStroke = new Stroke();
+    currentStroke = new Stroke(lineThickness);
     redrawCanvas(canvas);
 }
 
@@ -159,6 +188,10 @@ function redoLastStroke(canvas: HTMLCanvasElement) {
         strokes.push(stroke);
         dispatchDrawingChangedEvent(canvas);
     }
+}
+
+function setlineThickness(thickness: number) {
+     lineThickness = thickness;
 }
 
 // Initialize the application when the document is fully loaded
