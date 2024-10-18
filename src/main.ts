@@ -5,6 +5,8 @@ const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
 let lineThickness: number = 3;
 
+
+
 class ToolPreview {
     position: Point;
     thickness: number;
@@ -66,6 +68,30 @@ let strokes: Stroke[] = []; // Display list for current strokes
 let redoStack: Stroke[] = []; // Stack for redo operations
 let currentStroke: Stroke = new Stroke(lineThickness);
 
+class Sticker {
+    position: Point;
+    icon: string;
+
+    constructor(icon: string, position: Point = { x: 0, y: 0 }) {
+        this.icon = icon;
+        this.position = position;
+    }
+
+    updatePosition(position: Point) {
+        this.position = position;
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.font = '24px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.icon, this.position.x, this.position.y);
+    }
+}
+
+let currentStickerPreview: Sticker | null = null;  // To preview sticker before placement
+let stickers: Sticker[] = []; // List to hold added stickers
+
 function initializeApp() {
     // Create and append the application title
     const headerTitle = document.createElement("h1");
@@ -88,6 +114,9 @@ function initializeApp() {
     const thinButton = createButton("Thin", () => setlineThickness(1));
     const medButton = createButton("Medium", () => setlineThickness(3)); // Default Thickness   
     const thickButton = createButton("Thick", () => setlineThickness(5)); 
+    const sticker1Button = createButton("Scream 😱", () => setStickerTool("😱"));
+    const sticker2Button = createButton("Anxious 😰", () => setStickerTool("😰"));
+    const sticker3Button = createButton("Fearful 😨", () => setStickerTool("😨"));
 
     const buttonContainer = document.createElement('div');
     buttonContainer.classList.add('button-container');
@@ -97,6 +126,9 @@ function initializeApp() {
     buttonContainer.appendChild(thinButton);
     buttonContainer.appendChild(medButton);
     buttonContainer.appendChild(thickButton);
+    buttonContainer.appendChild(sticker1Button);
+    buttonContainer.appendChild(sticker2Button);
+    buttonContainer.appendChild(sticker3Button);
 
     container.appendChild(buttonContainer); // Append the button container
 
@@ -109,6 +141,14 @@ function initializeApp() {
 }
 
 let currentTool: HTMLButtonElement | null = null;
+
+let currentStickerIcon: string | null = null;
+
+function setStickerTool(icon: string) {
+    currentStickerIcon = icon;
+    currentToolPreview = null;
+}
+
 
 function createButton(label: string, onClick: () => void): HTMLButtonElement {
     const button = document.createElement('button');
@@ -136,6 +176,25 @@ function createCanvas(): HTMLCanvasElement {
 
 let drawing = false;
 function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
+
+    canvas.addEventListener('mousemove', (event) => {
+        if (currentStickerIcon) {
+            const point = { 
+                x: event.clientX - canvas.offsetLeft, 
+                y: event.clientY - canvas.offsetTop 
+            };
+            previewSticker(currentStickerIcon, canvas, point);
+        }
+        toolMoved(event); // Update tool movement
+    });
+
+    canvas.addEventListener('mousedown', () => {
+        if (currentStickerIcon && currentStickerPreview) {
+            addSticker(currentStickerIcon, currentStickerPreview.position);
+            currentStickerPreview = null; // Clear preview after sticker placement
+            dispatchDrawingChangedEvent(canvas);
+        }
+    });
 
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
@@ -199,9 +258,17 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
     for (const stroke of strokes) {
         stroke.display(context);
     }
-
+    
     if (currentToolPreview && !drawing) {
         currentToolPreview.draw(context);
+    }
+
+    for (const sticker of stickers) {
+        sticker.draw(context);
+    }
+
+    if (currentStickerPreview && !drawing) {
+        currentStickerPreview.draw(context);
     }
 }
 
@@ -230,6 +297,17 @@ function redoLastStroke(canvas: HTMLCanvasElement) {
 
 function setlineThickness(thickness: number) {
      lineThickness = thickness;
+}
+
+function previewSticker(icon: string, canvas: HTMLCanvasElement, position: Point) {
+    currentStickerPreview = new Sticker(icon, position);
+    dispatchDrawingChangedEvent(canvas);
+}
+
+function addSticker(icon: string, position: Point) {
+    const newSticker = new Sticker(icon, position);
+    stickers.push(newSticker);
+    currentStickerPreview = null;
 }
 
 // Initialize the application when the document is fully loaded
