@@ -3,10 +3,41 @@ import "./style.css";
 const APPLICATION_TITLE = "Hi";
 const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
+class Stroke {
+    points: Point[];
+
+    constructor(points: Point[] = []) {
+        this.points = points;
+    }
+
+    addPoint(point: Point) {
+        this.points.push(point);
+    }
+
+    display(ctx: CanvasRenderingContext2D) {
+        if (this.points.length === 0) return;
+
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'white'; // The draw color is white
+
+        ctx.beginPath();
+        for (let i = 0; i < this.points.length; i++) {
+            const point = this.points[i];
+            if (i === 0) {
+                ctx.moveTo(point.x, point.y);
+            } else {
+                ctx.lineTo(point.x, point.y);
+            }
+        }
+        ctx.stroke();
+    }
+}
+
 type Point = { x: number, y: number };
-let strokes: Point[][] = []; // Display list for current strokes
-let redoStack: Point[][] = []; // Stack for redo operations
-let currentStroke: Point[] = [];
+let strokes: Stroke[] = []; // Display list for current strokes
+let redoStack: Stroke[] = []; // Stack for redo operations
+let currentStroke: Stroke = new Stroke();
 
 function initializeApp() {
     // Create and append the application title
@@ -56,13 +87,13 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
 
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
-        currentStroke = [];
+        currentStroke = new Stroke();
         addPoint(event, canvas);
     };
 
     const endDrawing = () => {
         if (drawing) {
-            if (currentStroke.length > 0) {
+            if (currentStroke.points.length > 0) {
                 strokes.push(currentStroke);
                 redoStack = []; // Clear redo stack whenever a new stroke is finished
                 dispatchDrawingChangedEvent(canvas);
@@ -77,7 +108,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
             x: event.clientX - canvas.offsetLeft,
             y: event.clientY - canvas.offsetTop
         };
-        currentStroke.push(point);
+        currentStroke.addPoint(point);
         dispatchDrawingChangedEvent(canvas);
     };
 
@@ -101,28 +132,16 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
     // Clear the canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    context.lineWidth = 2;
-    context.lineCap = 'round';
-    context.strokeStyle = 'white';
-
+    // Call display method on each stroke
     for (const stroke of strokes) {
-        context.beginPath();
-        for (let i = 0; i < stroke.length; i++) {
-            const point = stroke[i];
-            if (i === 0) {
-                context.moveTo(point.x, point.y);
-            } else {
-                context.lineTo(point.x, point.y);
-            }
-        }
-        context.stroke();
+        stroke.display(context);
     }
 }
 
 function clearCanvas(canvas: HTMLCanvasElement) {
     strokes = [];
     redoStack = [];
-    currentStroke = [];
+    currentStroke = new Stroke();
     redrawCanvas(canvas);
 }
 
