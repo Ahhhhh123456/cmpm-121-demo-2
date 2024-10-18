@@ -5,6 +5,29 @@ const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
 let lineThickness: number = 3;
 
+class ToolPreview {
+    position: Point;
+    thickness: number;
+
+    constructor(thickness: number, position: Point = { x: 0, y: 0 }) {
+        this.thickness = thickness;
+        this.position = position;
+    }
+
+    updatePosition(position: Point) {
+        this.position = position;
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, this.thickness / 2, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Semi-transparent for preview
+        ctx.fill();
+    }
+}
+
+let currentToolPreview: ToolPreview | null = null;
+
 class Stroke {
     points: Point[];
     thickness: number;
@@ -111,22 +134,21 @@ function createCanvas(): HTMLCanvasElement {
     return canvas;
 }
 
+let drawing = false;
 function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
-    let drawing = false;
 
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
-        currentStroke = new Stroke(lineThickness); // Initialize current stroke with the current global thickness
+        currentStroke = new Stroke(lineThickness);
+        currentToolPreview = null; // Hide preview when drawing
         addPoint(event, canvas);
     };
 
     const endDrawing = () => {
-        if (drawing) {
-            if (currentStroke.points.length > 0) {
-                strokes.push(currentStroke);
-                redoStack = []; // Clear redo stack whenever a new stroke is finished
-                dispatchDrawingChangedEvent(canvas);
-            }
+        if (drawing && currentStroke.points.length > 0) {
+            strokes.push(currentStroke);
+            redoStack = [];
+            dispatchDrawingChangedEvent(canvas);
             drawing = false;
         }
     };
@@ -141,10 +163,24 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
         dispatchDrawingChangedEvent(canvas);
     };
 
-    // Attach mouse events
+    const toolMoved = (event: MouseEvent) => {
+        const point = {
+            x: event.clientX - canvas.offsetLeft,
+            y: event.clientY - canvas.offsetTop
+        };
+        currentToolPreview = new ToolPreview(lineThickness, point);
+
+        // Clear the canvas and redraw strokes and tool preview
+        redrawCanvas(canvas);
+    };
+
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mouseup', endDrawing);
-    canvas.addEventListener('mousemove', (event) => addPoint(event, canvas));
+    canvas.addEventListener('mousemove', (event) => {
+        addPoint(event, canvas);
+        toolMoved(event); // Update tool movement
+    });
+    
 }
 
 // Dispatch a custom "drawing-changed" event
@@ -158,12 +194,14 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    // Clear the canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Call display method on each stroke
     for (const stroke of strokes) {
         stroke.display(context);
+    }
+
+    if (currentToolPreview && !drawing) {
+        currentToolPreview.draw(context);
     }
 }
 
