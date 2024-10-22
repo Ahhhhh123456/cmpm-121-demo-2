@@ -3,9 +3,20 @@ import "./style.css";
 const APPLICATION_TITLE = "Hi";
 const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
+// Define Sticker Data interface
+interface StickerData {
+    icon: string;
+    name: string;
+}
+
+// Initial array for managing sticker objects
+let stickersData: StickerData[] = [
+    { icon: "😱", name: "shock" },
+    { icon: "😰", name: "worried" },
+    { icon: "😨", name: "fear" }
+];
+
 let lineThickness: number = 3;
-
-
 
 class ToolPreview {
     position: Point;
@@ -93,55 +104,52 @@ let currentStickerPreview: Sticker | null = null;  // To preview sticker before 
 let stickers: Sticker[] = []; // List to hold added stickers
 
 function initializeApp() {
-    // Create and append the application title
     const headerTitle = document.createElement("h1");
     headerTitle.textContent = APPLICATION_TITLE;
     rootElement.appendChild(headerTitle);
 
-    // Create a container for the canvas and controls
     const container = document.createElement('div');
     container.classList.add('canvas-container');
     rootElement.appendChild(container);
 
-    // Create and append the canvas
     const canvas = createCanvas();
     container.appendChild(canvas);
 
-    // Create control buttons
+    const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('button-container');
+
     const clearButton = createButton("Clear Canvas", () => clearCanvas(canvas));
     const undoButton = createButton("Undo", () => undoLastStroke(canvas));
     const redoButton = createButton("Redo", () => redoLastStroke(canvas));
     const thinButton = createButton("Thin", () => setlineThickness(1));
-    const medButton = createButton("Medium", () => setlineThickness(3)); // Default Thickness   
-    const thickButton = createButton("Thick", () => setlineThickness(5)); 
-    const sticker1Button = createButton("Scream 😱", () => setStickerTool("😱"));
-    const sticker2Button = createButton("Anxious 😰", () => setStickerTool("😰"));
-    const sticker3Button = createButton("Fearful 😨", () => setStickerTool("😨"));
+    const medButton = createButton("Medium", () => setlineThickness(3));
+    const thickButton = createButton("Thick", () => setlineThickness(5));
 
-    const buttonContainer = document.createElement('div');
-    buttonContainer.classList.add('button-container');
     buttonContainer.appendChild(clearButton);
     buttonContainer.appendChild(undoButton);
     buttonContainer.appendChild(redoButton);
     buttonContainer.appendChild(thinButton);
     buttonContainer.appendChild(medButton);
     buttonContainer.appendChild(thickButton);
-    buttonContainer.appendChild(sticker1Button);
-    buttonContainer.appendChild(sticker2Button);
-    buttonContainer.appendChild(sticker3Button);
+
+    // Create sticker buttons dynamically
+    stickersData.forEach(sticker => {
+        const button = createButton(sticker.icon, () => setStickerTool(sticker.icon));
+        buttonContainer.appendChild(button);
+    });
+
+    // Add a button for custom stickers
+    const addCustomStickerButton = createButton("Add Custom Sticker", () => createCustomSticker());
+    buttonContainer.appendChild(addCustomStickerButton);
 
     container.appendChild(buttonContainer); // Append the button container
-
-    // Set the browser tab title
     document.title = APPLICATION_TITLE;
 
-    // Add event listeners for canvas
     setupDrawingOnCanvas(canvas);
     canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
 }
 
 let currentTool: HTMLButtonElement | null = null;
-
 let currentStickerIcon: string | null = null;
 
 function setStickerTool(icon: string) {
@@ -149,18 +157,25 @@ function setStickerTool(icon: string) {
     currentToolPreview = null;
 }
 
+function createCustomSticker() {
+    const userIcon = prompt("Enter a new emoji or character for your sticker:", "🙂");
+    if (userIcon) {
+        stickersData.push({ icon: userIcon, name: `custom-${stickersData.length}` });
+        const button = createButton(userIcon, () => setStickerTool(userIcon));
+        document.querySelector('.button-container')?.appendChild(button);
+    }
+}
 
 function createButton(label: string, onClick: () => void): HTMLButtonElement {
     const button = document.createElement('button');
     button.textContent = label;
     button.addEventListener('click', () => {
-      // Update the current tool and styling
-      if (currentTool) {
-          currentTool.classList.remove('selectedTool');
-      }
-      currentTool = button;
-      button.classList.add('selectedTool');
-      onClick();
+        if (currentTool) {
+            currentTool.classList.remove('selectedTool');
+        }
+        currentTool = button;
+        button.classList.add('selectedTool');
+        onClick();
     });
     return button;
 }
@@ -191,7 +206,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
     canvas.addEventListener('mousedown', () => {
         if (currentStickerIcon && currentStickerPreview) {
             addSticker(currentStickerIcon, currentStickerPreview.position);
-            currentStickerPreview = null; // Clear preview after sticker placement
+            currentStickerPreview = null;
             dispatchDrawingChangedEvent(canvas);
         }
     });
@@ -199,7 +214,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
         currentStroke = new Stroke(lineThickness);
-        currentToolPreview = null; // Hide preview when drawing
+        currentToolPreview = null;
         addPoint(event, canvas);
     };
 
@@ -229,7 +244,6 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
         };
         currentToolPreview = new ToolPreview(lineThickness, point);
 
-        // Clear the canvas and redraw strokes and tool preview
         redrawCanvas(canvas);
     };
 
@@ -237,18 +251,15 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
     canvas.addEventListener('mouseup', endDrawing);
     canvas.addEventListener('mousemove', (event) => {
         addPoint(event, canvas);
-        toolMoved(event); // Update tool movement
+        toolMoved(event);
     });
-    
 }
 
-// Dispatch a custom "drawing-changed" event
 function dispatchDrawingChangedEvent(canvas: HTMLCanvasElement) {
     const event = new CustomEvent('drawing-changed');
     canvas.dispatchEvent(event);
 }
 
-// Clear and redraw the canvas based on current strokes
 function redrawCanvas(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
     if (!context) return;
@@ -276,6 +287,7 @@ function clearCanvas(canvas: HTMLCanvasElement) {
     strokes = [];
     redoStack = [];
     currentStroke = new Stroke(lineThickness);
+    stickers = [];
     redrawCanvas(canvas);
 }
 
@@ -310,5 +322,4 @@ function addSticker(icon: string, position: Point) {
     currentStickerPreview = null;
 }
 
-// Initialize the application when the document is fully loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
