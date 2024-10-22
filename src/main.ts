@@ -17,14 +17,17 @@ let stickersData: StickerData[] = [
 ];
 
 let lineThickness: number = 3;
+let currentColor: string = getRandomColor();
 
 class ToolPreview {
     position: Point;
     thickness: number;
+    color: string;
 
-    constructor(thickness: number, position: Point = { x: 0, y: 0 }) {
+    constructor(thickness: number, position: Point = { x: 0, y: 0 }, color: string = 'rgba(255, 255, 255, 0.5)') {
         this.thickness = thickness;
         this.position = position;
+        this.color = color;
     }
 
     updatePosition(position: Point) {
@@ -34,7 +37,7 @@ class ToolPreview {
     draw(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.thickness / 2, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Semi-transparent for preview
+        ctx.fillStyle = this.color; 
         ctx.fill();
     }
 }
@@ -44,10 +47,12 @@ let currentToolPreview: ToolPreview | null = null;
 class Stroke {
     points: Point[];
     thickness: number;
+    color: string;
 
-    constructor(thickness: number, points: Point[] = []) {
+    constructor(thickness: number, color: string, points: Point[] = []) {
         this.thickness = thickness;
         this.points = points;
+        this.color = color;
     }
 
     addPoint(point: Point) {
@@ -57,9 +62,9 @@ class Stroke {
     display(ctx: CanvasRenderingContext2D) {
         if (this.points.length === 0) return;
 
-        ctx.lineWidth = this.thickness; // Use the stroke's specific thickness
+        ctx.lineWidth = this.thickness;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = 'white'; // The draw color is white
+        ctx.strokeStyle = this.color;
 
         ctx.beginPath();
         for (let i = 0; i < this.points.length; i++) {
@@ -75,17 +80,19 @@ class Stroke {
 }
 
 type Point = { x: number, y: number };
-let strokes: Stroke[] = []; // Display list for current strokes
-let redoStack: Stroke[] = []; // Stack for redo operations
-let currentStroke: Stroke = new Stroke(lineThickness);
+let strokes: Stroke[] = []; 
+let redoStack: Stroke[] = []; 
+let currentStroke: Stroke = new Stroke(lineThickness, currentColor);
 
 class Sticker {
     position: Point;
     icon: string;
+    rotation: number; 
 
-    constructor(icon: string, position: Point = { x: 0, y: 0 }) {
+    constructor(icon: string, position: Point = { x: 0, y: 0 }, rotation: number = Math.random() * 2 * Math.PI) {
         this.icon = icon;
         this.position = position;
+        this.rotation = rotation;
     }
 
     updatePosition(position: Point) {
@@ -93,15 +100,21 @@ class Sticker {
     }
 
     draw(ctx: CanvasRenderingContext2D) {
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+        ctx.rotate(this.rotation);
+
         ctx.font = '24px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(this.icon, this.position.x, this.position.y);
+        ctx.fillText(this.icon, 0, 0);
+
+        ctx.restore();
     }
 }
 
-let currentStickerPreview: Sticker | null = null;  // To preview sticker before placement
-let stickers: Sticker[] = []; // List to hold added stickers
+let currentStickerPreview: Sticker | null = null;  
+let stickers: Sticker[] = [];
 
 function initializeApp() {
     const headerTitle = document.createElement("h1");
@@ -132,27 +145,24 @@ function initializeApp() {
     buttonContainer.appendChild(medButton);
     buttonContainer.appendChild(thickButton);
 
-    // Create sticker buttons dynamically
     stickersData.forEach(sticker => {
         const button = createButton(sticker.icon, () => setStickerTool(sticker.icon));
         buttonContainer.appendChild(button);
     });
 
-    // Add a button for custom stickers
     const addCustomStickerButton = createButton("Add Custom Sticker", () => createCustomSticker());
     buttonContainer.appendChild(addCustomStickerButton);
 
-    container.appendChild(buttonContainer); // Append the button container
+    container.appendChild(buttonContainer); 
     document.title = APPLICATION_TITLE;
 
     setupDrawingOnCanvas(canvas);
     canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
 
-    // Button for exporting the canvas
     const exportButton = createButton("Export", exportCanvas);
     buttonContainer.appendChild(exportButton);
 
-    container.appendChild(buttonContainer); // Append the button container
+    container.appendChild(buttonContainer);
     document.title = APPLICATION_TITLE;
 
     setupDrawingOnCanvas(canvas);
@@ -164,7 +174,16 @@ let currentStickerIcon: string | null = null;
 
 function setStickerTool(icon: string) {
     currentStickerIcon = icon;
+    randomizeToolProperties();
     currentToolPreview = null;
+}
+
+function randomizeToolProperties() {
+    currentColor = getRandomColor();
+    if (currentStickerIcon) {
+        const randomRotation = Math.random() * 2 * Math.PI;
+        currentStickerPreview = new Sticker(currentStickerIcon, { x: 0, y: 0 }, randomRotation);
+    }
 }
 
 function createCustomSticker() {
@@ -186,6 +205,8 @@ function createButton(label: string, onClick: () => void): HTMLButtonElement {
         currentTool = button;
         button.classList.add('selectedTool');
         onClick();
+        randomizeToolProperties();
+        redrawCanvas(document.querySelector('#myCanvas')!);
     });
     return button;
 }
@@ -210,7 +231,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
             };
             previewSticker(currentStickerIcon, canvas, point);
         }
-        toolMoved(event); // Update tool movement
+        toolMoved(event);
     });
 
     canvas.addEventListener('mousedown', () => {
@@ -223,7 +244,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
 
     const startDrawing = (event: MouseEvent) => {
         drawing = true;
-        currentStroke = new Stroke(lineThickness);
+        currentStroke = new Stroke(lineThickness, currentColor);
         currentToolPreview = null;
         addPoint(event, canvas);
     };
@@ -252,7 +273,7 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
             x: event.clientX - canvas.offsetLeft,
             y: event.clientY - canvas.offsetTop
         };
-        currentToolPreview = new ToolPreview(lineThickness, point);
+        currentToolPreview = new ToolPreview(lineThickness, point, currentColor);
 
         redrawCanvas(canvas);
     };
@@ -296,23 +317,20 @@ function redrawCanvas(canvas: HTMLCanvasElement) {
 function clearCanvas(canvas: HTMLCanvasElement) {
     strokes = [];
     redoStack = [];
-    currentStroke = new Stroke(lineThickness);
+    currentStroke = new Stroke(lineThickness, currentColor);
     stickers = [];
     redrawCanvas(canvas);
 }
 
 function exportCanvas() {
-    // Create a new canvas
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1024;
     exportCanvas.height = 1024;
     const exportContext = exportCanvas.getContext('2d');
     if (!exportContext) return;
 
-    // Scale the drawing commands for the larger canvas
-    exportContext.scale(4, 4); // Scale up by 4 times to fill 1024x1024 space
+    exportContext.scale(4, 4); 
 
-    // Redraw all existing strokes and stickers onto the new canvas
     for (const stroke of strokes) {
         stroke.display(exportContext);
     }
@@ -320,7 +338,6 @@ function exportCanvas() {
         sticker.draw(exportContext);
     }
 
-    // Trigger a download with the content of the new canvas
     exportCanvas.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
@@ -329,7 +346,7 @@ function exportCanvas() {
         a.download = 'canvas-export.png';
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a); // Cleanup
+        document.body.removeChild(a); 
         URL.revokeObjectURL(url);
     });
 }
@@ -351,18 +368,30 @@ function redoLastStroke(canvas: HTMLCanvasElement) {
 }
 
 function setlineThickness(thickness: number) {
-     lineThickness = thickness;
+    lineThickness = thickness;
+    currentToolPreview = new ToolPreview(lineThickness, { x: 0, y: 0 }, currentColor);
+    redrawCanvas(document.querySelector('#myCanvas')!);
 }
 
 function previewSticker(icon: string, canvas: HTMLCanvasElement, position: Point) {
-    currentStickerPreview = new Sticker(icon, position);
+    currentStickerPreview = new Sticker(icon, position, currentStickerPreview ? currentStickerPreview.rotation : 0);
     dispatchDrawingChangedEvent(canvas);
 }
 
 function addSticker(icon: string, position: Point) {
-    const newSticker = new Sticker(icon, position);
+    const rotation = currentStickerPreview ? currentStickerPreview.rotation : 0;
+    const newSticker = new Sticker(icon, position, rotation);
     stickers.push(newSticker);
     currentStickerPreview = null;
+}
+
+function getRandomColor(): string {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
