@@ -122,7 +122,7 @@ function initializeApp() {
     const undoButton = createButton("Undo", () => undoLastStroke(canvas));
     const redoButton = createButton("Redo", () => redoLastStroke(canvas));
     const thinButton = createButton("Thin", () => setlineThickness(1));
-    const medButton = createButton("Medium", () => setlineThickness(3));
+    const medButton = createButton("Medium (Default)", () => setlineThickness(3));
     const thickButton = createButton("Thick", () => setlineThickness(5));
 
     buttonContainer.appendChild(clearButton);
