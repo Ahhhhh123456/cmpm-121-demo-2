@@ -147,6 +147,16 @@ function initializeApp() {
 
     setupDrawingOnCanvas(canvas);
     canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
+
+    // Button for exporting the canvas
+    const exportButton = createButton("Export", exportCanvas);
+    buttonContainer.appendChild(exportButton);
+
+    container.appendChild(buttonContainer); // Append the button container
+    document.title = APPLICATION_TITLE;
+
+    setupDrawingOnCanvas(canvas);
+    canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
 }
 
 let currentTool: HTMLButtonElement | null = null;
@@ -289,6 +299,39 @@ function clearCanvas(canvas: HTMLCanvasElement) {
     currentStroke = new Stroke(lineThickness);
     stickers = [];
     redrawCanvas(canvas);
+}
+
+function exportCanvas() {
+    // Create a new canvas
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1024;
+    exportCanvas.height = 1024;
+    const exportContext = exportCanvas.getContext('2d');
+    if (!exportContext) return;
+
+    // Scale the drawing commands for the larger canvas
+    exportContext.scale(4, 4); // Scale up by 4 times to fill 1024x1024 space
+
+    // Redraw all existing strokes and stickers onto the new canvas
+    for (const stroke of strokes) {
+        stroke.display(exportContext);
+    }
+    for (const sticker of stickers) {
+        sticker.draw(exportContext);
+    }
+
+    // Trigger a download with the content of the new canvas
+    exportCanvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'canvas-export.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a); // Cleanup
+        URL.revokeObjectURL(url);
+    });
 }
 
 function undoLastStroke(canvas: HTMLCanvasElement) {
