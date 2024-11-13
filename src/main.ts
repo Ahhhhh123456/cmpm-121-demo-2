@@ -7,7 +7,7 @@ const stickersData = [
     { icon: "😱", name: "shock" },
     { icon: "😰", name: "worried" },
     { icon: "😨", name: "fear" }
-]
+];
 
 let lineThickness: number = 3;
 let currentColor: string = getRandomColor();
@@ -109,6 +109,7 @@ class Sticker {
 let currentStickerPreview: Sticker | null = null;  
 let stickers: Sticker[] = [];
 
+// Updated UI setup function with stickers label
 function initializeApp() {
     const headerTitle = document.createElement("h1");
     headerTitle.textContent = APPLICATION_TITLE;
@@ -121,43 +122,64 @@ function initializeApp() {
     const canvas = createCanvas();
     container.appendChild(canvas);
 
+    // Create a container for brush sizes.
+    const brushSizeContainer = document.createElement('div');
+    brushSizeContainer.classList.add('brush-size-container');
+
+    const brushSizeLabel = document.createElement("span");
+    brushSizeLabel.textContent = "Brush Sizes: ";
+    brushSizeContainer.appendChild(brushSizeLabel);
+
+    // Add brush size buttons to the brush size container.
+    const thinButton = createButton("Thin", () => setlineThickness(1));
+    const medButton = createButton("Medium (Default)", () => setlineThickness(3));
+    const thickButton = createButton("Thick", () => setlineThickness(5));
+
+    brushSizeContainer.appendChild(thinButton);
+    brushSizeContainer.appendChild(medButton);
+    brushSizeContainer.appendChild(thickButton);
+
+    // Append the brush size container to the main container.
+    container.appendChild(brushSizeContainer);
+
+    // Create a container for sticker buttons.
+    const stickerContainer = document.createElement('div');
+    stickerContainer.classList.add('sticker-container');
+
+    const stickerLabel = document.createElement("span");
+    stickerLabel.textContent = "Stickers: ";
+    stickerContainer.appendChild(stickerLabel);
+
+    stickersData.forEach(sticker => {
+        const button = createButton(sticker.icon, () => setStickerTool(sticker.icon));
+        stickerContainer.appendChild(button);
+    });
+
+    const addCustomStickerButton = createButton("Add Custom Sticker", () => createCustomSticker());
+    stickerContainer.appendChild(addCustomStickerButton);
+
+    // Append the sticker container below the brush size container.
+    container.appendChild(stickerContainer);
+
+    // Create and append a single button container for the remaining buttons.
     const buttonContainer = document.createElement('div');
     buttonContainer.classList.add('button-container');
 
     const clearButton = createButton("Clear Canvas", () => clearCanvas(canvas));
     const undoButton = createButton("Undo", () => undoLastStroke(canvas));
     const redoButton = createButton("Redo", () => redoLastStroke(canvas));
-    const thinButton = createButton("Thin", () => setlineThickness(1));
-    const medButton = createButton("Medium (Default)", () => setlineThickness(3));
-    const thickButton = createButton("Thick", () => setlineThickness(5));
 
     buttonContainer.appendChild(clearButton);
     buttonContainer.appendChild(undoButton);
     buttonContainer.appendChild(redoButton);
-    buttonContainer.appendChild(thinButton);
-    buttonContainer.appendChild(medButton);
-    buttonContainer.appendChild(thickButton);
-
-    stickersData.forEach(sticker => {
-        const button = createButton(sticker.icon, () => setStickerTool(sticker.icon));
-        buttonContainer.appendChild(button);
-    });
-
-    const addCustomStickerButton = createButton("Add Custom Sticker", () => createCustomSticker());
-    buttonContainer.appendChild(addCustomStickerButton);
-
-    container.appendChild(buttonContainer); 
-    document.title = APPLICATION_TITLE;
-
-    setupDrawingOnCanvas(canvas);
-    canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
 
     const exportButton = createButton("Export", exportCanvas);
     buttonContainer.appendChild(exportButton);
 
+    // Append the button container below the sticker container.
     container.appendChild(buttonContainer);
-    document.title = APPLICATION_TITLE;
 
+    document.title = APPLICATION_TITLE;
     setupDrawingOnCanvas(canvas);
     canvas.addEventListener('drawing-changed', () => redrawCanvas(canvas));
 }
@@ -184,7 +206,7 @@ function createCustomSticker() {
     if (userIcon) {
         stickersData.push({ icon: userIcon, name: `custom-${stickersData.length}` });
         const button = createButton(userIcon, () => setStickerTool(userIcon));
-        document.querySelector('.button-container')?.appendChild(button);
+        document.querySelector('.sticker-container')?.appendChild(button);
     }
 }
 
@@ -215,7 +237,6 @@ function createCanvas(): HTMLCanvasElement {
 
 let drawing = false;
 function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
-
     canvas.addEventListener('mousemove', (event) => {
         if (currentStickerIcon) {
             const point = { 
@@ -267,7 +288,6 @@ function setupDrawingOnCanvas(canvas: HTMLCanvasElement) {
             y: event.clientY - canvas.offsetTop
         };
         currentToolPreview = new ToolPreview(lineThickness, point, currentColor);
-
         redrawCanvas(canvas);
     };
 
