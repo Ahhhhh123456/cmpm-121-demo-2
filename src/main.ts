@@ -1,7 +1,7 @@
 import "./style.css";
 
 const APPLICATION_TITLE = "Hi";
-const rootElement = document.querySelector<HTMLDivElement>("#app")!;
+const app = document.querySelector<HTMLDivElement>("#app")!;
 
 const stickersData = [
     { icon: "😱", name: "shock" },
@@ -113,11 +113,11 @@ let stickers: Sticker[] = [];
 function initializeApp() {
     const headerTitle = document.createElement("h1");
     headerTitle.textContent = APPLICATION_TITLE;
-    rootElement.appendChild(headerTitle);
+    app.appendChild(headerTitle);
 
     const container = document.createElement('div');
     container.classList.add('canvas-container');
-    rootElement.appendChild(container);
+    app.appendChild(container);
 
     const canvas = createCanvas();
     container.appendChild(canvas);
@@ -231,7 +231,7 @@ function createCanvas(): HTMLCanvasElement {
     canvas.id = 'myCanvas';
     canvas.width = 256;
     canvas.height = 256;
-    rootElement.appendChild(canvas);
+    app.appendChild(canvas);
     return canvas;
 }
 
