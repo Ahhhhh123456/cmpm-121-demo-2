@@ -3,18 +3,11 @@ import "./style.css";
 const APPLICATION_TITLE = "Hi";
 const rootElement = document.querySelector<HTMLDivElement>("#app")!;
 
-// Define Sticker Data interface
-interface StickerData {
-    icon: string;
-    name: string;
-}
-
-// Initial array for managing sticker objects
-let stickersData: StickerData[] = [
+const stickersData = [
     { icon: "😱", name: "shock" },
     { icon: "😰", name: "worried" },
     { icon: "😨", name: "fear" }
-];
+]
 
 let lineThickness: number = 3;
 let currentColor: string = getRandomColor();
